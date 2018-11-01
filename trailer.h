@@ -72,6 +72,7 @@ struct process_trailer_options {
 	int only_input;
 	int unfold;
 	int no_divider;
+	char *filter_key;
 };
 
 #define PROCESS_TRAILER_OPTIONS_INIT {0}

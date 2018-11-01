@@ -1323,7 +1323,19 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 					opts.only_trailers = 1;
 				else if (match_placeholder_arg(arg, "unfold", &arg))
 					opts.unfold = 1;
-				else
+				else if (skip_prefix(arg, "key=", &arg)) {
+					const char *end = arg + strcspn(arg, ",)");
+
+					if (opts.filter_key)
+						free(opts.filter_key);
+
+					opts.filter_key = xstrndup(arg, end - arg);
+					arg = end;
+					if (*arg == ',')
+						arg++;
+
+					opts.only_trailers = 1;
+				} else
 					break;
 			}
 		}
@@ -1331,6 +1343,7 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 			format_trailers_from_commit(sb, msg + c->subject_off, &opts);
 			ret = arg - placeholder + 1;
 		}
+		free(opts.filter_key);
 		return ret;
 	}
 

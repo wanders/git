@@ -598,6 +598,51 @@ test_expect_success ':only and :unfold work together' '
 	test_cmp expect actual
 '
 
+test_expect_success 'pretty format %(trailers:key=foo) shows that trailer' '
+	git log --no-walk --pretty="%(trailers:key=Acked-by)" >actual &&
+	{
+		echo "Acked-by: A U Thor <author@example.com>" &&
+		echo
+	} >expect &&
+	test_cmp expect actual
+'
+
+test_expect_success 'pretty format %(trailers:key=foo) is case insensitive' '
+	git log --no-walk --pretty="%(trailers:key=AcKed-bY)" >actual &&
+	{
+		echo "Acked-by: A U Thor <author@example.com>" &&
+		echo
+	} >expect &&
+	test_cmp expect actual
+'
+
+test_expect_success '%(trailers:key=nonexistant) becomes empty' '
+	git log --no-walk --pretty="x%(trailers:key=Nacked-by)x" >actual &&
+	{
+		echo "xx"
+	} >expect &&
+	test_cmp expect actual
+'
+
+test_expect_success '%(trailers:key=foo) handles multiple lines even if folded' '
+	git log --no-walk --pretty="%(trailers:key=Signed-Off-by)" >actual &&
+	{
+		grep -v patch.description <trailers | grep -v Acked-by &&
+		echo
+	} >expect &&
+	test_cmp expect actual
+'
+
+test_expect_success '%(trailers:key=foo,unfold) properly unfolds' '
+	git log --no-walk --pretty="%(trailers:key=Signed-Off-by,unfold)" >actual &&
+	{
+		echo "Signed-off-by: A U Thor <author@example.com>" &&
+		echo "Signed-off-by: A U Thor <author@example.com>" &&
+		echo
+	} >expect &&
+	test_cmp expect actual
+'
+
 test_expect_success 'trailer parsing not fooled by --- line' '
 	git commit --allow-empty -F - <<-\EOF &&
 	this is the subject
