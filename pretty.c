@@ -1483,9 +1483,15 @@ static size_t format_and_pad_commit(struct strbuf *sb, /* in UTF-8 */
 
 struct format_modifiers {
 	struct strbuf nonempty_prefix;
+	struct strbuf nonempty_suffix;
 	int del_lf_before_empty;
 };
-#define FORMAT_MODIFIERS_INIT { STRBUF_INIT, 0 }
+#define FORMAT_MODIFIERS_INIT { STRBUF_INIT, STRBUF_INIT, 0 }
+static void release_format_modifiers(struct format_modifiers *modifiers)
+{
+	strbuf_release (&modifiers->nonempty_prefix);
+	strbuf_release (&modifiers->nonempty_suffix);
+}
 
 static void apply_format_modifiers(struct strbuf *sb,
 				   const struct format_modifiers *modifiers,
@@ -1501,7 +1507,50 @@ static void apply_format_modifiers(struct strbuf *sb,
 			strbuf_insert(sb, startpos,
 				      modifiers->nonempty_prefix.buf,
 				      modifiers->nonempty_prefix.len);
+		}
+		if (modifiers->nonempty_suffix.len) {
+			strbuf_add(sb,
+				   modifiers->nonempty_suffix.buf,
+				   modifiers->nonempty_suffix.len);
+		}
 	}
+}
+
+static size_t format_commit_item(struct strbuf *sb, /* in UTF-8 */
+				 const char *placeholder,
+				 void *context);
+static int parse_format_modifiers(struct format_modifiers *modifiers,
+                                  const char *mod,
+                                  struct format_commit_context *context)
+{
+	char *fmt;
+
+	for (;;) {
+		if (skip_prefix(mod, "trim_prev_if_empty", &mod)) {
+			modifiers->del_lf_before_empty = 1;
+		} else if (skip_prefix(mod, "nonempty_prefix=", &mod)) {
+			int plen = strcspn(mod, ",");
+			fmt = xstrndup(mod, plen);
+			strbuf_expand(&modifiers->nonempty_prefix, fmt, format_fundamental, NULL);
+			free(fmt);
+			mod += plen;
+		} else if (skip_prefix(mod, "nonempty_suffix=", &mod)) {
+			int plen = strcspn(mod, ",");
+			fmt = xstrndup(mod, plen);
+			strbuf_expand(&modifiers->nonempty_suffix, mod, format_fundamental, NULL);
+			free(fmt);
+			mod += plen;
+		} else {
+			return 0;
+		}
+		if (*mod == ',')
+			mod++;
+		else if (*mod == '\0')
+			break;
+		else
+			return 0;
+	}
+	return 1;
 }
 
 static size_t format_commit_item(struct strbuf *sb, /* in UTF-8 */
@@ -1526,6 +1575,23 @@ static size_t format_commit_item(struct strbuf *sb, /* in UTF-8 */
 		strbuf_addch(&modifiers.nonempty_prefix, ' ');
 		placeholder++;
 		break;
+	case '[': {
+		const char *end = strchr (placeholder, ']');
+		char *modstr;
+		int ok;
+
+		if (!end)
+			return 0;
+		modstr = xstrndup(placeholder + 1, end - placeholder - 1);
+
+		ok = parse_format_modifiers(&modifiers, modstr, context);
+		free(modstr);
+		if (!ok)
+			return 0;
+
+		placeholder = end + 1;
+		break;
+	}
 	default:
 		break;
 	}
@@ -1539,6 +1605,7 @@ static size_t format_commit_item(struct strbuf *sb, /* in UTF-8 */
 
 	apply_format_modifiers(sb, &modifiers, orig_len);
 
+	release_format_modifiers(&modifiers);
 	return consumed;
 }
 
