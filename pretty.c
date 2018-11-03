@@ -1097,9 +1097,8 @@ static size_t format_fundamental(struct strbuf *sb, /* in UTF-8 */
 
 static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 				const char *placeholder,
-				void *context)
+				struct format_commit_context *c)
 {
-	struct format_commit_context *c = context;
 	const struct commit *commit = c->commit;
 	const char *msg = c->message;
 	struct commit_list *p;
