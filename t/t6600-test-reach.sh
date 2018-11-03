@@ -353,4 +353,56 @@ test_expect_success 'rev-list: symmetric difference topo-order' '
 	run_three_modes git rev-list --topo-order commit-3-8...commit-6-6
 '
 
+test_expect_success 'get_reachable_subset:all' '
+	cat >input <<-\EOF &&
+	X:commit-9-1
+	X:commit-8-3
+	X:commit-7-5
+	X:commit-6-6
+	X:commit-1-7
+	Y:commit-3-3
+	Y:commit-1-7
+	Y:commit-5-6
+	EOF
+	(
+		echo "get_reachable_subset(X,Y)" &&
+		git rev-parse commit-3-3 \
+			      commit-1-7 \
+			      commit-5-6 | sort
+	) >expect &&
+	test_three_modes get_reachable_subset
+'
+
+test_expect_success 'get_reachable_subset:some' '
+	cat >input <<-\EOF &&
+	X:commit-9-1
+	X:commit-8-3
+	X:commit-7-5
+	X:commit-1-7
+	Y:commit-3-3
+	Y:commit-1-7
+	Y:commit-5-6
+	EOF
+	(
+		echo "get_reachable_subset(X,Y)" &&
+		git rev-parse commit-3-3 \
+			      commit-1-7 | sort
+	) >expect &&
+	test_three_modes get_reachable_subset
+'
+
+test_expect_success 'get_reachable_subset:none' '
+	cat >input <<-\EOF &&
+	X:commit-9-1
+	X:commit-8-3
+	X:commit-7-5
+	X:commit-1-7
+	Y:commit-9-3
+	Y:commit-7-6
+	Y:commit-2-8
+	EOF
+	echo "get_reachable_subset(X,Y)" >expect &&
+	test_three_modes get_reachable_subset
+'
+
 test_done
