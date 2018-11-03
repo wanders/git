@@ -1481,53 +1481,65 @@ static size_t format_and_pad_commit(struct strbuf *sb, /* in UTF-8 */
 	return total_consumed;
 }
 
+struct format_modifiers {
+	struct strbuf nonempty_prefix;
+	int del_lf_before_empty;
+};
+#define FORMAT_MODIFIERS_INIT { STRBUF_INIT, 0 }
+
+static void apply_format_modifiers(struct strbuf *sb,
+				   const struct format_modifiers *modifiers,
+				   size_t startpos)
+{
+	int is_empty = (startpos == sb->len);
+
+	if (is_empty && modifiers->del_lf_before_empty) {
+		while (sb->len && sb->buf[sb->len - 1] == '\n')
+			strbuf_setlen(sb, sb->len - 1);
+	} else if (!is_empty) {
+		if (modifiers->nonempty_prefix.len) {
+			strbuf_insert(sb, startpos,
+				      modifiers->nonempty_prefix.buf,
+				      modifiers->nonempty_prefix.len);
+	}
+}
+
 static size_t format_commit_item(struct strbuf *sb, /* in UTF-8 */
 				 const char *placeholder,
 				 void *context)
 {
 	int consumed;
 	size_t orig_len;
-	enum {
-		NO_MAGIC,
-		ADD_LF_BEFORE_NON_EMPTY,
-		DEL_LF_BEFORE_EMPTY,
-		ADD_SP_BEFORE_NON_EMPTY
-	} magic = NO_MAGIC;
+	struct format_modifiers modifiers = FORMAT_MODIFIERS_INIT;
+	const char *orig_placeholder = placeholder;
 
 	switch (placeholder[0]) {
 	case '-':
-		magic = DEL_LF_BEFORE_EMPTY;
+		modifiers.del_lf_before_empty = 1;
+		placeholder++;
 		break;
 	case '+':
-		magic = ADD_LF_BEFORE_NON_EMPTY;
+		strbuf_addch(&modifiers.nonempty_prefix, '\n');
+		placeholder++;
 		break;
 	case ' ':
-		magic = ADD_SP_BEFORE_NON_EMPTY;
+		strbuf_addch(&modifiers.nonempty_prefix, ' ');
+		placeholder++;
 		break;
 	default:
 		break;
 	}
-	if (magic != NO_MAGIC)
-		placeholder++;
 
 	orig_len = sb->len;
+	consumed = placeholder - orig_placeholder;
 	if (((struct format_commit_context *)context)->flush_type != no_flush)
-		consumed = format_and_pad_commit(sb, placeholder, context);
+		consumed += format_and_pad_commit(sb, placeholder, context);
 	else
-		consumed = format_commit_one(sb, placeholder, context);
-	if (magic == NO_MAGIC)
-		return consumed;
+		consumed += format_commit_one(sb, placeholder, context);
 
-	if ((orig_len == sb->len) && magic == DEL_LF_BEFORE_EMPTY) {
-		while (sb->len && sb->buf[sb->len - 1] == '\n')
-			strbuf_setlen(sb, sb->len - 1);
-	} else if (orig_len != sb->len) {
-		if (magic == ADD_LF_BEFORE_NON_EMPTY)
-			strbuf_insert(sb, orig_len, "\n", 1);
-		else if (magic == ADD_SP_BEFORE_NON_EMPTY)
-			strbuf_insert(sb, orig_len, " ", 1);
-	}
-	return consumed + 1;
+	apply_format_modifiers(sb, &modifiers, orig_len);
+
+	return consumed;
 }
 
 static size_t userformat_want_item(struct strbuf *sb, const char *placeholder,
