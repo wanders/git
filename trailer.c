@@ -1150,8 +1150,10 @@ static void format_trailer_info(struct strbuf *out,
 			if (!opts->filter_key || !strcasecmp (tok.buf, opts->filter_key)) {
 				if (opts->unfold)
 					unfold_value(&val);
-
-				strbuf_addf(out, "%s: %s\n", tok.buf, val.buf);
+				if (opts->no_key)
+					strbuf_addf(out, "%s\n", val.buf);
+				else
+					strbuf_addf(out, "%s: %s\n", tok.buf, val.buf);
 			}
 			strbuf_release(&tok);
 			strbuf_release(&val);

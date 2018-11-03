@@ -643,6 +643,15 @@ test_expect_success '%(trailers:key=foo,unfold) properly unfolds' '
 	test_cmp expect actual
 '
 
+test_expect_success '%(trailers:key=foo,nokey) shows only value' '
+	git log --no-walk --pretty="%(trailers:key=Acked-by,nokey)" >actual &&
+	{
+		echo "A U Thor <author@example.com>" &&
+		echo
+	} >expect &&
+	test_cmp expect actual
+'
+
 test_expect_success 'trailer parsing not fooled by --- line' '
 	git commit --allow-empty -F - <<-\EOF &&
 	this is the subject
