@@ -36,7 +36,9 @@ extern int git_xmerge_style;
  * Can be used as a no-op hunk_fn for xdi_diff_outf(), since a NULL
  * one just sends the hunk line to the line_fn callback).
  */
-void discard_hunk_line(void *, long, long, long, long, const char *, long);
+void discard_hunk_line(void *priv,
+		       long ob, long on, long nb, long nn,
+		       const char *func, long funclen);
 
 /*
  * Compare the strings l1 with l2 which are of size s1 and s2 respectively.
