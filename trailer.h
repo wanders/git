@@ -74,6 +74,7 @@ struct process_trailer_options {
 	int no_divider;
 	int no_key;
 	char *filter_key;
+	const struct strbuf *separator;
 };
 
 #define PROCESS_TRAILER_OPTIONS_INIT {0}

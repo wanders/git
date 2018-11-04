@@ -1327,6 +1327,7 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 
 	if (skip_prefix(placeholder, "(trailers", &arg)) {
 		struct process_trailer_options opts = PROCESS_TRAILER_OPTIONS_INIT;
+		struct strbuf sepbuf = STRBUF_INIT;
 		size_t ret = 0;
 
 		opts.no_divider = 1;
@@ -1352,6 +1353,17 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 						arg++;
 
 					opts.only_trailers = 1;
+				} else if (skip_prefix(arg, "separator=", &arg)) {
+					size_t seplen = strcspn(arg, ",)");
+					strbuf_reset(&sepbuf);
+					char *fmt = xstrndup(arg, seplen);
+					strbuf_expand(&sepbuf, fmt, format_fundamental, NULL);
+					free(fmt);
+					opts.separator = &sepbuf;
+
+					arg += seplen;
+					if (*arg == ',')
+						arg++;
 				} else
 					break;
 			}
@@ -1360,6 +1372,7 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 			format_trailers_from_commit(sb, msg + c->subject_off, &opts);
 			ret = arg - placeholder + 1;
 		}
+		strbuf_release(&sepbuf);
 		free(opts.filter_key);
 		return ret;
 	}
